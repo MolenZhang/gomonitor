@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+  labels:
+    name: kube-api-exporter
+  name: kube-api-exporter
+spec:
+  selector:
+    name: kube-api-exporter
+  type: NodePort
+  ports:
+  - name: kube-api-exporter
+    protocol: TCP
+    port: 8080
+    nodePort: 30072
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kube-api-exporter
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: kube-api-exporter
+    spec:
+      containers:
+      - name: kube-api-exporter
+        #image: docker.io/tomwilkie/kube-api-exporter:master-2fe5dfb 
+        image: docker.io/dannystdu/kube-state-metrics:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080

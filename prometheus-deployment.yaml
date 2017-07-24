@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+  labels:
+    name: prometheus
+  name: prometheus
+spec:
+  selector:
+    app: prometheus
+  type: NodePort
+  ports:
+  - name: prometheus
+    protocol: TCP
+    port: 9090
+    nodePort: 30900
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    name: prometheus-deployment
+  name: prometheus
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - image: docker.io/prom/prometheus:v1.7.1
+        name: prometheus
+        command:
+        - "/bin/prometheus"
+        args:
+         - '-storage.local.retention=6h'
+         - '-storage.local.path=/prometheus'
+         - '-storage.local.memory-chunks=500000'
+         - '-config.file=/etc/prometheus/prometheus.yml'
+        # - '-alertmanager.url=http://alertmanager-0.svc.default:9093'
+         - '-alertmanager.url=http://172.16.13.111:30903'
+        ports:
+        - containerPort: 9090
+          protocol: TCP
+        volumeMounts:
+        - mountPath: '/prometheus'
+          name: data
+        - mountPath: '/etc/prometheus'
+          name: config-volume
+        - mountPath: '/etc/rules'
+          name: alert-rules
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 500m
+            memory: 2500Mi
+      volumes:
+      - emptyDir: {}
+        name: data
+      - configMap:
+          name: prometheus-config
+        name: config-volume
+      - configMap:
+          name: alert-rules-config
+        name: alert-rules

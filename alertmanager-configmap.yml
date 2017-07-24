@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+data:
+  alertmanager.yml: |-
+    global:
+      #smtp_smarthost: 'smtp.qq.com:465' #SMTP服务器地址及端口
+      #smtp_from: '1050488208@qq.com' #发件者邮箱地址
+      #smtp_auth_username: '1050488208@qq.com'
+      #smtp_auth_password: 'wnjqbyewpcdobehf'
+      smtp_smarthost: 'smtp.163.com:25' #SMTP服务器地址及端口
+      smtp_from: '15757126197@163.com' #发件者邮箱地址
+      smtp_auth_username: '15757126197@163.com'
+      smtp_auth_password: '125702'
+      #smtp_smarthost: 'smtp.sina.cn:25' #SMTP服务器地址及端口
+      #smtp_from: '13240277272@sina.cn' #发件者邮箱地址
+      #smtp_auth_username: '13240277272@sina.cn'
+      #smtp_auth_password: '125702'
+    
+    #templates: 邮件发送报警模板
+    #- filepath:    
+    
+    #路由匹配规则及警报发送间隔设置
+    route:
+      receiver: 'Molen' #逐级匹配 如果所有的子路由都不匹配 则报警规则只匹配主路由
+      group_by: ['alertname']
+      #新的group 等待该时间后 根据resolve_timeout判断是否发送alert通知（目测通过reload重新加载新规则 不好使）即每组告警发送等待的时间
+      group_wait: 30s
+      #已经存在的group 等待该时间(等待时可能会收到同一组的alert)，当上次发送通知到现在收到告警的间隔大于repeat_interval会继续发送通知
+      group_interval: 1m 
+      #等2m->间隔2m->小于3m->不发;再等2m->间隔4m->大于3m->发送； 即：每隔4m 发一次alert
+      repeat_interval: 2m 
+
+      #routes:
+      #- match: #匹配标签
+      #    internalIP: '172.16.13.111'
+      #    instance: 'cd008'
+      #   # pod_address: '10.244.1.126'
+      #  receiver: 'sendTo163'
+
+    #inhibit_rules 定义告警的抑制条件，过滤不必要的告警
+
+    #告警具体接收者
+    receivers:
+    - name: 'Molen'
+      email_configs:
+      - to: 'zhangfeng1@bonc.com.cn'
+        headers: { Subject: "[WARN] AlertManager报警邮件"}
+    #- name: 'sendTo163'
+    #  email_configs:
+    #  - to: 'zhangfeng1@bonc.com.cn'
+    #    headers: { Subject: "[3分钟发一次]"}

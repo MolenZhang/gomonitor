@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alert-rules-config
+data:
+  alert.rules: |-
+    ALERT InstanceDown
+      IF up { job = 'kubernetes-nodes_info', internalIP = '172.16.13.111'} == 0
+      For 1m
+      LABELS {
+        severity = 'error'
+      }
+      ANNOTATIONS {
+        summary = "Instance {{ $labels.instance }} down",
+        description = "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes."
+      }
+    ALERT HighCPU
+      IF ((sum(node_cpu { mode=~"user|nice|system|irq|softirq|steal|idle|iowait"})by(instance,job)) - (sum(node_cpu { mode=~"idle|iowait"})by(instance,job)))  / (sum(node_cpu { mode=~"user|nice|system|irq|softirq|steal|idle|iowait"})by(instance,job)) * 100 > 95
+      FOR 10m
+      LABELS {
+        severity = 'warning'
+      }
+      ANNOTATIONS {
+        summary = "High CPU Usage",
+        description = '{{ $laels.instance}} of job {{ $labels.job}} has really high CPU usage for more than 10 minutes.'
+      }
+    ALERT DNSLookupFailureFromPrometheus
+      IF prometheus_sd_dns_lookup_failures_total > 5
+      FOR 1m
+      LABELS {
+        severity = 'warning'
+      }
+      ANNOTATIONS {
+        summary = "Prometheus reported over 5 DNS lookup failure",
+        description = "The prometheus unit reported that it failed to query the DNS.  Look at the kube-dns to see if it is having any problems"
+      }
+    ALERT ServiceDown
+      IF kube_pod_container_status_terminated { pod = "alertmanager-0",container = "alertmanager" } > 0
+      For 5m
+      LABELS {
+        severity = 'critical'
+      }
+      ANNOTATIONS {
+        summary = 'Service {{ $labels.service }} down',
+        description = '{{ $laels.pod}} of job {{ $labels.job}} has been down for more than 5 minutes.'
+      }
+    ALERT DeploymentReplicasMismatch
+      IF (kube_deployment_spec_replicas { job = "kube-api-exporter" } != kube_deployment_status_replicas_available { job = "kube-api-exporter"}) or (kube_deployment_spec_replicas { job = "kube-api-exporter"} unless kube_deployment_status_replicas_available{job = "kube-api-exporter"})
+      FOR 5m
+      LABELS {
+        severity = "critical"
+      }
+      ANNOTATIONS {
+        summary = "Deployment of {{$labels.exported_namespace}}/{{$labels.name}} failed",
+        description = "Deployment of {{$labels.exported_namespace}}/{{$labels.name}} failed - observed replicas != intended replicas.",
+      }
+    ALERT PodRestartingTooMuch
+      IF rate(kube_pod_container_status_restarts[1m]) > 1/(5*60)
+      FOR 1h
+      LABELS {
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        summary = "Pod {{$labels.namespace}}/{{$label.name}} restarting too much.",
+        description = "Pod {{$labels.namespace}}/{{$label.name}} restarting too much."
+      }
+    ALERT MemoryUsageHigh
+      IF sum(container_memory_working_set_bytes { id = "/"}) BY (instance) / sum(machine_memory_bytes) BY (instance) > 0.85
+      FOR 5m
+      LABELS {
+        severity = "critical"
+      }
+      ANNOTATIONS {
+        description = "{{ $labels.instance }} has high memory usage of {{ $value }}",
+        summary = "Instance {{ $labels.instance }} memory usage high"
+      }
+    ALERT CPUUsageHigh
+      IF sum(rate(container_cpu_usage_seconds_total { id = "/"}[5m])) BY (instance) / sum(machine_cpu_cores) BY (instance) > 0.95
+      FOR 5m
+      LABELS {
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        description = "{{ $labels.instance }} has high cpu usage of {{ $value }}",
+        summary = "Instance {{ $labels.instance }} cpu usage high"
+      }
+    ALERT NetworkUsageHigh
+      IF sum(rate(container_network_receive_bytes_total { id = "/"}[5m])) BY (instance, interface) > 100000000
+      FOR 5m
+      LABELS {
+        severity = "warning"
+      }
+      ANNOTATIONS {
+        description = "{{ $labels.instance }} {{ $labels.interface }} has high network usage of {{ $value }}",
+        summary = "Instance {{ $labels.instance }} {{ $labels.interface }} usage high"
+      }

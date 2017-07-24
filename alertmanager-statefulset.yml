@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  labels:
+    name: alertmanager
+spec:
+  selector:
+    app: alertmanager
+  type: NodePort
+  ports:
+  - name: alertmanager
+    protocol: TCP
+    port: 9093
+    nodePort: 30903
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: alertmanager
+  namespace: default
+spec:
+  serviceName: "alert"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: alertmanager
+        image: docker.io/prom/alertmanager:v0.7.1
+        ports:
+        - containerPort: 9093
+        command:
+        - "/bin/alertmanager"
+        args:
+        - '-config.file=/etc/alertmanager/alertmanager.yml'
+        - '-storage.path=/alertmanager'
+        volumeMounts:
+        - name: data
+          mountPath: '/alertmanager'
+        - name: config-volume
+          mountPath: '/etc/alertmanager'
+
+      volumes:
+      - emptyDir: {}
+        name: data
+      - configMap:
+          name: alertmanager-config           
+        name: config-volume
+        
